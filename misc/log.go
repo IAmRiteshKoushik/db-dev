@@ -17,3 +17,9 @@ func LogAppend(fp *os.File, line string) error {
     }
     return fp.Sync() // fsync
 }
+
+// Problems :
+// 1. It does not modify existing data
+// 2. A databases uses additional "indexes" to query data efficiently. There 
+//    are brute-force ways to query a bunch of records in arbitrary order.
+// 3. Deleting data is a mess as logs end up growing forever.

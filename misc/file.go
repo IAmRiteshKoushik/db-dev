@@ -7,6 +7,9 @@ import (
 )
 
 // Approach 1
+// This approach does not create directories but only files
+// If the directories mentioned in the path are not created 
+// already, then - no file or directory error is thrown
 func SaveData1(path string, data []byte) error {
     fp, err := os.OpenFile(path, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 0664)
     if err != nil {
@@ -34,6 +37,12 @@ func SaveData2(path string, data []byte) error {
         return err
     }
     defer fp.Close()
+
+    _, err = fp.Write(data)
+    if err != nil {
+        os.Remove(tmp)
+        return err
+    }
     
     return os.Rename(tmp, path)
 }
@@ -48,6 +57,8 @@ func SaveData3(path string, data []byte) error {
         os.Remove(tmp)
         return err
     }
+    // FSync system call is used to guarentee whether previously written data 
+    // persists to the block device.
     err = fp.Sync()
     if err != nil {
         os.Remove(tmp)
