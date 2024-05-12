@@ -11,39 +11,6 @@ const(
     BNODE_LEAF = 2 // leaf node (with value)
 )
 
-type BTree struct {
-    // pointer (a non-zero page number)
-    root    uint64
-    // callbacks for managing on-disk pages
-    get     func(uint64) BNode
-    new     func(BNode) uint64
-    del     func(uint64)
-}
-
-const HEADER = 4
-const BTREE_PAGE_SIZE = 4096    // page size is defined to be 4KiB
-const BTREE_MAX_KEY_SIZE = 1000
-const BTREE_MAX_VAL_SIZE = 3000
-
-func init() {
-    node1max := HEADER + 8 + 2 + 4 + BTREE_MAX_KEY_SIZE + BTREE_MAX_VAL_SIZE
-    assert(node1max > BTREE_MAX_KEY_SIZE, "Node size exceeds allowed limit")
-
-    // if node1max > BTREE_PAGE_SIZE {
-        // Handle error: Node size exceeds page size limit
-        // assertion did not work properly
-
-        // panic("Node size exceeds allowed limit")
-        // assert.True(node1max <= BTREE_PAGE_SIZE)
-    // }
-}
-
-func assert(condition bool, msg string){
-    if condition != true{
-        panic(msg)
-    }
-}
-
 // header
 func (node BNode) btype() uint16 {
     return binary.LittleEndian.Uint16(node.data)
@@ -108,4 +75,89 @@ func (node BNode) nbytes() uint16 {
     return node.kvPos(node.nkeys())
 }
 
-// B-Tree Insertion
+type BTree struct {
+    // pointer (a non-zero page number)
+    root    uint64
+    // callbacks for managing on-disk pages
+    get     func(uint64) BNode
+    new     func(BNode) uint64
+    del     func(uint64)
+}
+
+const HEADER = 4
+const BTREE_PAGE_SIZE = 4096    // page size is defined to be 4KiB
+const BTREE_MAX_KEY_SIZE = 1000
+const BTREE_MAX_VAL_SIZE = 3000
+
+func init() {
+    node1max := HEADER + 8 + 2 + 4 + BTREE_MAX_KEY_SIZE + BTREE_MAX_VAL_SIZE
+    assert(node1max > BTREE_MAX_KEY_SIZE, "Node size exceeds allowed limit")
+
+    // if node1max > BTREE_PAGE_SIZE {
+        // Handle error: Node size exceeds page size limit
+        // assertion did not work properly
+
+        // panic("Node size exceeds allowed limit")
+        // assert.True(node1max <= BTREE_PAGE_SIZE)
+    // }
+}
+
+func assert(condition bool, msg string){
+    if condition != true{
+        panic(msg)
+    }
+}
+
+func (tree *BTree) Delete(key []byte) bool {
+    assert(len(key) != 0, "Key length is 0")
+    assert(len(key) <= BTREE_MAX_KEY_SIZE, "Key-length exceeded MAX_SIZE")
+    if tree.root == 0 {
+        return false
+    }
+    updated := treeDelete(tree, tree.get(tree.root), key)
+    if len(updated.data) == 0 {
+        return false // not found
+    }
+    tree.del(tree.root)
+    if updated.btype() == BNODE_NODE && updated.nkeys() == 1 {
+        // remove a level
+        tree.root = updated.getPtr(0)
+    } else {
+        tree.root = tree.new(updated)
+    }
+    return true
+}
+
+func (tree *BTree) Insert(key []byte, val []byte) {
+    assert(len(key) != 0, "")
+    assert(len(key) <= BTREE_MAX_KEY_SIZE, "Key-length exceeded MAX_SIZE")
+    assert(len(val) <= BTREE_MAX_VAL_SIZE, "Key-length exceeded MAX_SIZE")
+
+    if tree.root == 0 {
+        // create the first node
+        root := BNode{data: make([]byte, BTREE_PAGE_SIZE)}
+        root.setHeader(BNODE_LEAF, 2)
+        // a dummy key, this makes the tree cover the whole key space
+        // thus a lookcup can always find a containing node
+        nodeAppendKV(root, 0, 0, nil, nil)
+        nodeAppendKV(root, 1, 0, key, val)
+        tree.root = tree.new(root)
+        return
+    }
+    node := tree.get(tree.root)
+    tree.del(tree.root)
+
+    node = treeInsert(tree, node, key, val)
+    nsplit, splitted := nodeSplit3(node)
+    if nsplit > 1 {
+        root := BNode{data: make([]byte, BTREE_PAGE_SIZE)}
+        root.setHeader(BNODE_NODE, nsplit)
+        for i, knode := range splitted[:nsplit] {
+            ptr, key := tree.new(knode), knode.getKey(0)
+            nodeAppendKV(root, uint16(i), ptr, key, nil)
+        }
+        tree.root = tree.new(root)
+    } else {
+        tree.root = tree.new(splitted[0])
+    }
+}
