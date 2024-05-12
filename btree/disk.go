@@ -52,3 +52,8 @@ func extendMmap(db *KV, npages int) error {
     return nil
 
 }
+
+// used by writePages()
+// func extendFile(db *KV, npages int) error {
+//
+// }
