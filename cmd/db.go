@@ -1,7 +1,7 @@
 package cmd 
 
 import(
-    "github.com/IAmRiteshKoushik/btree/kv"
+    "github.com/IAmRiteshKoushik/db-dev/btree"
 )
 
 const(
@@ -31,7 +31,7 @@ type DB struct {
     Path string
     // internals
     // TODO: To be fixed later
-    // kv KV -> 
+    // kv KV 
     tables map[string]*TableDef // cached table definition
 }
 
