@@ -24,6 +24,44 @@ const(
     BNODE_LEAF = 2 // leaf node (with value)
 )
 
+type BTree struct {
+    // pointer (a non-zero page number)
+    root    uint64
+
+    // callbacks for managing on-disk pages
+    get     func(uint64) BNode // takes in pointer, returns BNode
+    new     func(BNode) uint64 // takes in BNode, returns pointer
+    del     func(uint64) // takes in pointer, deletes BNode, returns nothing
+}
+
+const HEADER = 4
+const BTREE_PAGE_SIZE = 4096    // page size is defined to be 4KiB
+const BTREE_MAX_KEY_SIZE = 1000
+const BTREE_MAX_VAL_SIZE = 3000
+
+// Function to check is max_node_size remains smaller than page size
+func init() {
+    node1max := HEADER + 8 + 2 + 4 + BTREE_MAX_KEY_SIZE + BTREE_MAX_VAL_SIZE
+    assert(node1max > BTREE_MAX_KEY_SIZE, "Node size exceeds allowed limit")
+
+    // if node1max > BTREE_PAGE_SIZE {
+        // Handle error: Node size exceeds page size limit
+        // assertion did not work properly
+
+        // panic("Node size exceeds allowed limit")
+        // assert.True(node1max <= BTREE_PAGE_SIZE)
+    // }
+}
+
+func assert(condition bool, msg string){
+    // Helper function used to check whether a condition satisfies or not
+    // Result: panic() if condition -> FALSE
+    if condition != true{
+        panic(msg)
+    }
+}
+
+
 // 1. header
 // Adding the header to the []byte slice in LittleEndian encoding
 // format. If we directly add uint64 then it will occupy more space 
@@ -186,41 +224,6 @@ func (node BNode) nbytes() uint16 {
     // approach, we have avoided utilizing built-ins as much as possible
 }
 
-
-
-type BTree struct {
-    // pointer (a non-zero page number)
-    root    uint64
-    // callbacks for managing on-disk pages
-    get     func(uint64) BNode
-    new     func(BNode) uint64
-    del     func(uint64)
-}
-
-const HEADER = 4
-const BTREE_PAGE_SIZE = 4096    // page size is defined to be 4KiB
-const BTREE_MAX_KEY_SIZE = 1000
-const BTREE_MAX_VAL_SIZE = 3000
-
-// Function to check is max_node_size remains smaller than page size
-func init() {
-    node1max := HEADER + 8 + 2 + 4 + BTREE_MAX_KEY_SIZE + BTREE_MAX_VAL_SIZE
-    assert(node1max > BTREE_MAX_KEY_SIZE, "Node size exceeds allowed limit")
-
-    // if node1max > BTREE_PAGE_SIZE {
-        // Handle error: Node size exceeds page size limit
-        // assertion did not work properly
-
-        // panic("Node size exceeds allowed limit")
-        // assert.True(node1max <= BTREE_PAGE_SIZE)
-    // }
-}
-
-func assert(condition bool, msg string){
-    if condition != true{
-        panic(msg)
-    }
-}
 
 func (tree *BTree) Delete(key []byte) bool {
     assert(len(key) != 0, "Key length is 0")

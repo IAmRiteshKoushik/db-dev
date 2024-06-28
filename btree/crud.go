@@ -5,6 +5,19 @@ import (
 	"encoding/binary"
 )
 
+// IDEA :
+// 1. LOOK UP THE KEY
+    // In order to insert a key into a leaf node, we need to look up its 
+    // position in the sorted KV list
+// 2. UPDATE LEAF NODES
+    // After looking up the position to insert/update, we need to create a copy
+    // of the node with the new key in it
+// 3. RECURSIVE INSERTION
+// 4. HANDLE INTERNAL NODES
+// 5. SPLIT BIG NODES
+// 6. UPDATE INTERNAL NODES
+
+
 func nodeLookupLE(node BNode, key []byte) uint16 {
     nkeys := node.nkeys()
     found := uint16(0)
@@ -31,6 +44,10 @@ func leafInsert(newNode, old BNode, idx uint16, key, val []byte) {
 
 func leafUpdate(newNode, old BNode, idx uint16, key, val []byte) {
     // TODO : The function is supposedly similar to leafInsert
+    newNode.setHeader(BNODE_LEAF, old.nkeys() + 1)
+    nodeAppendRange(newNode, old, 0, 0, idx)
+    nodeAppendKV(newNode, idx, 0, key, val)
+    nodeAppendRange(newNode, old, idx + 1, idx, old.nkeys() - idx)
 }
 
 // copy multiple KVs into the position
@@ -93,7 +110,7 @@ func treeInsert(tree *BTree, node BNode, key []byte, val []byte) BNode {
             leafUpdate(newNode, node, idx, key, val)
         } else {
             // insert it after the position
-            leafInsert(newNode, node, idx, key, val)
+            leafInsert(newNode, node, idx + 1, key, val)
         }
     case BNODE_NODE:
         // internal node, insert it to a child node
